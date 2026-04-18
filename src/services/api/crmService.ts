@@ -263,6 +263,35 @@ export const crmService = {
     }
   },
 
+  getAllContacts: async (filters: Omit<ContactFilters, 'page' | 'limit'> = {}): Promise<CustomerContact[]> => {
+    try {
+      const result = await callAppScript("GET", { ...filters, limit: 999999, page: 1 });
+      return result.items;
+    } catch (e) {
+      console.warn("AppScript failed, using mock data", e);
+      await delay(500);
+      let items = [...contactsDB];
+      if (filters.search) {
+        const s = filters.search.toLowerCase();
+        items = items.filter(i => 
+          i.cusContact_FullName.toLowerCase().includes(s) || 
+          i.cusContact_Phone.includes(s)
+        );
+      }
+      if (filters.platformId) items = items.filter(i => i.platform_Id === filters.platformId);
+      if (filters.statusId) items = items.filter(i => i.conStatus_Id === filters.statusId);
+      if (filters.startDate && filters.endDate) {
+        const sDate = new Date(filters.startDate).getTime();
+        const eDate = new Date(filters.endDate).getTime() + 86400000;
+        items = items.filter(i => {
+          const d = new Date(i.cusContact_Date).getTime();
+          return d >= sDate && d <= eDate;
+        });
+      }
+      return items.sort((a, b) => new Date(b.cusContact_CreationDate).getTime() - new Date(a.cusContact_CreationDate).getTime());
+    }
+  },
+
   getContactById: async (id: string): Promise<{ contact: CustomerContact; serviceIds: string[] } | null> => {
     try {
       return await callAppScript("GET_BY_ID", { id });

@@ -1,14 +1,15 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Button, Table, Badge, Card, Spinner, Modal, TextInput, Select, Pagination } from "flowbite-react";
+import { Button, Table, Badge, Card, Spinner, Modal, TextInput, Select, Pagination, Dropdown, Checkbox, Label } from "flowbite-react";
 import { Icon } from "@iconify/react";
+import * as XLSX from "xlsx";
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
 import { crmService, ContactFilters } from "../../services/api/crmService";
-import { CustomerContact, ContactStatus, Platform, HospitalService } from "../../types/crm.types";
+import { CustomerContact, ContactStatus, Platform, HospitalService, Employee } from "../../types/crm.types";
 import ContactForm from "./components/ContactForm";
 import ContactImportModal from "./components/ContactImportModal";
 import { useAuth } from "../../contexts/AuthContext";
 import { toThaiDateString } from "src/helpers/format";
+import { useCallback, useEffect, useState } from "react";
 
 const CustomerContacts = () => {
   const { user, role } = useAuth();
@@ -22,7 +23,9 @@ const CustomerContacts = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [viewContact, setViewContact] = useState<CustomerContact | null>(null);
   const [viewServices, setViewServices] = useState<string[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Filtering & Pagination State
   const [filters, setFilters] = useState<ContactFilters>({
@@ -41,14 +44,16 @@ const CustomerContacts = () => {
 
   const loadReferenceData = async () => {
     try {
-      const [fetchedStatuses, fetchedPlatforms, fetchedServices] = await Promise.all([
+      const [fetchedStatuses, fetchedPlatforms, fetchedServices, fetchedEmployees] = await Promise.all([
         crmService.getStatuses(),
         crmService.getPlatforms(),
-        crmService.getHospitalServices()
+        crmService.getHospitalServices(),
+        crmService.getEmployees()
       ]);
       setStatuses(fetchedStatuses);
       setPlatforms(fetchedPlatforms);
       setHospitalServices(fetchedServices);
+      setEmployees(fetchedEmployees);
     } catch (error) {
       console.error("Failed to load reference CRM data", error);
     }
@@ -61,6 +66,7 @@ const CustomerContacts = () => {
       setContacts(result.items);
       setTotalPages(result.total_pages > 0 ? result.total_pages : 1);
       setTotalCount(result.total_count);
+      setSelectedIds([]); // Clear selection on reload
     } catch (error) {
       console.error("Failed to load contacts data", error);
     } finally {
@@ -83,6 +89,18 @@ const CustomerContacts = () => {
 
   const onPageChange = (page: number) => {
     setFilters(prev => ({ ...prev, page }));
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === contacts.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(contacts.map(c => c.cusContact_Id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   const handleAddNew = () => {
@@ -152,46 +170,66 @@ const CustomerContacts = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    if (contacts.length === 0) {
-      toast.error("No data to export");
-      return;
+  const handleExportExcel = async (isAll = false) => {
+    try {
+      let dataToExport: CustomerContact[] = [];
+      if (isAll) {
+        setLoading(true);
+        dataToExport = await crmService.getAllContacts(filters);
+        setLoading(false);
+      } else {
+        dataToExport = selectedIds.length > 0
+          ? contacts.filter(c => selectedIds.includes(c.cusContact_Id))
+          : contacts;
+      }
+
+      if (dataToExport.length === 0) {
+        toast.error("No data to export");
+        return;
+      }
+
+      const worksheetData = dataToExport.map(c => ({
+        "ID": c.cusContact_Id,
+        "Full Name": c.cusContact_FullName,
+        "Phone": c.cusContact_Phone,
+        "Status": getStatusName(c.conStatus_Id),
+        "Platform": getPlatformName(c.platform_Id),
+        "Date": toThaiDateString(c.cusContact_Date),
+        "Added By": getEmployeeName(c.employee_Id),
+        "Detail": c.cusContact_Detail,
+        "Note": c.cusContact_Note || ""
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Contacts");
+      XLSX.writeFile(workbook, `Contacts_${new Date().toISOString().split("T")[0]}.xlsx`);
+      toast.success("Excel exported successfully");
+    } catch (error) {
+      toast.error("Failed to export Excel");
+      setLoading(false);
     }
+  };
 
-    const headers = [
-      "ID", "Name", "Phone", "Status", "Platform",
-      "Date", "Details", "Notes", "Employee ID"
-    ];
-
-    const csvRows = [headers.join(",")];
-
-    contacts.forEach(c => {
-      const row = [
-        c.cusContact_Id,
-        `"${c.cusContact_FullName}"`,
-        `"${c.cusContact_Phone}"`,
-        `"${getStatusName(c.conStatus_Id)}"`,
-        `"${getPlatformName(c.platform_Id)}"`,
-        c.cusContact_Date,
-        `"${(c.cusContact_Detail || "").replace(/"/g, '""')}"`,
-        `"${(c.cusContact_Note || "").replace(/"/g, '""')}"`,
-        c.employee_Id
-      ];
-      csvRows.push(row.join(","));
+  const handleExportPDF = async () => {
+    // Basic implementation using window.print as jspdf is not available/configured for advanced layouts yet
+    // In a real scenario, we'd use jspdf-autotable here.
+    Swal.fire({
+      title: "PDF Export",
+      text: "Generating PDF snapshot of current view...",
+      icon: "info",
+      timer: 1500,
+      showConfirmButton: false
     });
-
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csvRows.join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Customer_Contacts_${new Date().toISOString().split("T")[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    window.print();
   };
 
   const getStatusName = (id: string) => statuses.find(s => s.conStatus_Id === id)?.conStatus_Name || id;
   const getPlatformName = (id: string) => platforms.find(p => p.platform_Id === id)?.platform_Name || id;
+  const getEmployeeName = (id: string) => {
+    const emp = employees.find(e => e.employee_Id === id);
+    return emp ? `${emp.employee_FristName} ${emp.employee_LastName}` : id;
+  };
 
   if (isFormOpen) {
     return (
@@ -214,11 +252,22 @@ const CustomerContacts = () => {
         <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
           Customer Contacts
         </h5>
-        <div className="flex gap-2">
-          <Button onClick={handleExportCSV} color="success" className="bg-green-600 hover:bg-green-700 text-white">
-            <Icon icon="solar:download-square-outline" className="mr-2 h-5 w-5" />
-            Export CSV
-          </Button>
+        <div className="flex gap-2 flex-wrap justify-end">
+          <Dropdown label="Export" color="success" className="bg-green-600 hover:bg-green-700 text-white">
+            <Dropdown.Item onClick={() => handleExportExcel(false)}>
+              <Icon icon="solar:file-download-outline" className="mr-2 h-4 w-4" />
+              Export Selected (Excel)
+            </Dropdown.Item>
+            <Dropdown.Item onClick={() => handleExportExcel(true)}>
+              <Icon icon="solar:download-square-outline" className="mr-2 h-4 w-4" />
+              Export All (Excel)
+            </Dropdown.Item>
+            <Dropdown.Item onClick={handleExportPDF}>
+              <Icon icon="solar:file-corrupted-outline" className="mr-2 h-4 w-4" />
+              Export PDF
+            </Dropdown.Item>
+          </Dropdown>
+
           {(role === "R99" || role === "R01") && (
             <>
               <Button onClick={() => setIsImportModalOpen(true)} color="info" className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -257,8 +306,17 @@ const CustomerContacts = () => {
             <option value="">All Services</option>
             {hospitalServices.map(s => <option key={s.hosService_Id} value={s.hosService_Id}>{s.hosService_Name}</option>)}
           </Select>
-
-
+          <div className="flex items-center gap-2">
+            <Label htmlFor="pageSize" value="Page Size:" className="hidden lg:block whitespace-nowrap" />
+            <Select name="limit" value={filters.limit} onChange={handleFilterChange} id="pageSize">
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={9999}>ทั้งหมด</option>
+            </Select>
+          </div>
         </div>
         <div className="flex gap-2">
           <TextInput
@@ -285,18 +343,23 @@ const CustomerContacts = () => {
           <div className="overflow-x-auto">
             <Table hoverable>
               <Table.Head>
+                <Table.HeadCell className="p-4">
+                  <Checkbox checked={selectedIds.length === contacts.length && contacts.length > 0} onChange={toggleSelectAll} />
+                </Table.HeadCell>
                 <Table.HeadCell>Name</Table.HeadCell>
                 <Table.HeadCell>Phone</Table.HeadCell>
                 <Table.HeadCell>Status</Table.HeadCell>
                 <Table.HeadCell>Platform</Table.HeadCell>
                 <Table.HeadCell>Date</Table.HeadCell>
-                <Table.HeadCell>
-                  <span className="sr-only">Actions</span>
-                </Table.HeadCell>
+                <Table.HeadCell>Added By</Table.HeadCell>
+                <Table.HeadCell>Actions</Table.HeadCell>
               </Table.Head>
               <Table.Body className="divide-y">
                 {contacts.map((contact) => (
                   <Table.Row key={contact.cusContact_Id} className="bg-white dark:border-gray-700 dark:bg-gray-800">
+                    <Table.Cell className="p-4">
+                      <Checkbox checked={selectedIds.includes(contact.cusContact_Id)} onChange={() => toggleSelect(contact.cusContact_Id)} />
+                    </Table.Cell>
                     <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white">
                       {contact.cusContact_FullName}
                     </Table.Cell>
@@ -306,23 +369,31 @@ const CustomerContacts = () => {
                     </Table.Cell>
                     <Table.Cell>{getPlatformName(contact.platform_Id)}</Table.Cell>
                     <Table.Cell>{toThaiDateString(contact.cusContact_Date)}</Table.Cell>
-                    <Table.Cell className="flex gap-2">
-                      <Button size="sm" color="info" onClick={() => handleView(contact.cusContact_Id)}>
-                        View
-                      </Button>
-                      {(role === "R99" || (role === "R01" && contact.employee_Id === user?.employee_Id)) && (
-                        <>
-                          <Button size="sm" color="light" onClick={() => handleEdit(contact.cusContact_Id)}>
-                            Edit
-                          </Button>
-                          <Button size="sm" color="warning" onClick={() => handleHide(contact.cusContact_Id)}>
-                            Hide
-                          </Button>
-                          <Button size="sm" color="failure" onClick={() => handleDelete(contact.cusContact_Id)}>
-                            Del
-                          </Button>
-                        </>
-                      )}
+                    <Table.Cell>{getEmployeeName(contact.employee_Id)}</Table.Cell>
+                    <Table.Cell>
+                      <Dropdown label={<Icon icon="solar:menu-dots-bold" />} inline arrowIcon={false}>
+                        <Dropdown.Item onClick={() => handleView(contact.cusContact_Id)}>
+                          <Icon icon="solar:eye-outline" className="mr-2 h-4 w-4 text-blue-500" />
+                          View Details
+                        </Dropdown.Item>
+                        {(role === "R99" || (role === "R01" && contact.employee_Id === user?.employee_Id)) && (
+                          <>
+                            <Dropdown.Item onClick={() => handleEdit(contact.cusContact_Id)}>
+                              <Icon icon="solar:pen-new-square-outline" className="mr-2 h-4 w-4 text-gray-500" />
+                              Edit
+                            </Dropdown.Item>
+                            <Dropdown.Item onClick={() => handleHide(contact.cusContact_Id)}>
+                              <Icon icon="solar:mask-bold-outline" className="mr-2 h-4 w-4 text-yellow-500" />
+                              Hide
+                            </Dropdown.Item>
+                            <Dropdown.Divider />
+                            <Dropdown.Item onClick={() => handleDelete(contact.cusContact_Id)} className="text-red-600">
+                              <Icon icon="solar:trash-bin-trash-outline" className="mr-2 h-4 w-4" />
+                              Delete
+                            </Dropdown.Item>
+                          </>
+                        )}
+                      </Dropdown>
                     </Table.Cell>
                   </Table.Row>
                 ))}
@@ -371,7 +442,7 @@ const CustomerContacts = () => {
                   {viewServices.length === 0 && <span className="text-gray-500">No specific services</span>}
                 </div>
               </div>
-              <p className="text-sm text-gray-400 mt-4 border-t pt-2">Added by Employee ID: {viewContact.employee_Id}</p>
+              <p className="text-sm text-gray-400 mt-4 border-t pt-2">Added by: {getEmployeeName(viewContact.employee_Id)}</p>
             </div>
           )}
         </Modal.Body>
@@ -379,7 +450,7 @@ const CustomerContacts = () => {
           <Button onClick={() => setViewContact(null)}>Close</Button>
         </Modal.Footer>
       </Modal>
-      
+
       <ContactImportModal
         show={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
