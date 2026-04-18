@@ -24,6 +24,8 @@ function doPost(e) {
         return getContactById(payload.id);
       case "INSERT":
         return insertContact(payload);
+      case "BULK_INSERT":
+        return bulkInsertContacts(payload);
       case "UPDATE":
         return updateContact(payload);
       case "HIDE":
@@ -285,6 +287,77 @@ function insertContact(payload) {
       message: "Successfully created contact",
       status: "200",
       data: newRecord
+    });
+  } catch (err) {
+    return response({ success: false, message: err.message, status: "500" });
+  }
+}
+
+/* ---------- BULK INSERT ---------- */
+function bulkInsertContacts(payload) {
+  try {
+    const data = payload.data;
+    if (!data || !Array.isArray(data)) throw new Error("Invalid data format for bulk insert");
+
+    const sheet = getSheetCCT();
+    const srvSheet = getSheetCSV();
+    const headers = sheet.getDataRange().getValues()[0];
+
+    const contactRows = [];
+    const serviceRows = [];
+    const now = new Date().toISOString();
+
+    data.forEach(item => {
+      const contact = item.contact;
+      const serviceIds = item.serviceIds || [];
+      const newId = generateUUIDv4();
+
+      const newRecord = {
+        cusContact_Id: newId,
+        cusContact_FirstName: contact.cusContact_FirstName || "",
+        cusContact_MiddleName: contact.cusContact_MiddleName || "",
+        cusContact_LastName: contact.cusContact_LastName || "",
+        cusContact_FullName: contact.cusContact_FullName || "",
+        cusContact_Phone: contact.cusContact_Phone || "",
+        cusContact_Detail: contact.cusContact_Detail || "",
+        cusContact_Note: contact.cusContact_Note || "",
+        cusContact_Date: contact.cusContact_Date || now,
+        cusContact_CreationDate: now,
+        conStatus_Id: contact.conStatus_Id || "",
+        platform_Id: contact.platform_Id || "",
+        employee_Id: contact.employee_Id || "",
+        cusContact_IsHidden: false
+      };
+
+      const rowData = headers.map(h => newRecord[h] !== undefined ? newRecord[h] : "");
+      contactRows.push(rowData);
+
+      // Prepare Services
+      let srvArray = Array.isArray(serviceIds) ? serviceIds : serviceIds.split(",");
+      srvArray.forEach(srvId => {
+        srvId = srvId.trim();
+        if (!srvId) return;
+        const csId = generateUUIDv4();
+        serviceRows.push([csId, newId, srvId]);
+      });
+    });
+
+    // Batch write contacts
+    if (contactRows.length > 0) {
+      const lastRow = sheet.getLastRow();
+      sheet.getRange(lastRow + 1, 1, contactRows.length, headers.length).setValues(contactRows);
+    }
+
+    // Batch write services
+    if (serviceRows.length > 0) {
+      const lastSrvRow = srvSheet.getLastRow();
+      srvSheet.getRange(lastSrvRow + 1, 1, serviceRows.length, 3).setValues(serviceRows);
+    }
+
+    return response({
+      success: true,
+      message: `Successfully created ${contactRows.length} contacts`,
+      status: "200"
     });
   } catch (err) {
     return response({ success: false, message: err.message, status: "500" });
