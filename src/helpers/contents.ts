@@ -8,6 +8,10 @@ export const employeeService = {
   EMPLOYEE_URL: `https://script.google.com/macros/s/${import.meta.env.VITE_EMPLOYEE_BEARER_TOKEN}/exec`,
 };
 
+export const departmentService = {
+  DEPARTMENT_URL: `https://script.google.com/macros/s/${import.meta.env.VITE_DEPARTMENT_BEARER_TOKEN}/exec`,
+};
+
 export const removeAllStorage = async () => {
   let keys: string[] = [];
   keys.forEach((k) => localStorage.removeItem(k));

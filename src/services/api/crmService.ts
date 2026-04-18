@@ -110,8 +110,13 @@ export const crmService = {
     return mockRoles;
   },
   getStatuses: async (): Promise<ContactStatus[]> => {
-    await delay(300);
-    return mockContactStatuses;
+    try {
+      return await callAppScript("GET_STATUSES");
+    } catch (e) {
+      console.warn("AppScript failed, using mock data", e);
+      await delay(300);
+      return mockContactStatuses;
+    }
   },
   // Platforms CRUD
   getPlatforms: async (): Promise<Platform[]> => {

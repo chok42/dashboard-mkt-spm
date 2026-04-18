@@ -34,6 +34,8 @@ function doPost(e) {
         return deleteContact(payload.id);
       case "GET_REPORT":
         return getReport();
+      case "GET_STATUSES":
+        return getContactStatuses();
       
       // Services
       case "GET_SERVICES": return getHospitalServices(payload);
@@ -518,6 +520,33 @@ function getReport() {
       success: true,
       status: "200",
       data: report
+    });
+  } catch (err) {
+    return response({ success: false, message: err.message, status: "500" });
+  }
+}
+
+/* ---------- GET STATUSES ---------- */
+function getContactStatuses() {
+  try {
+    const sheet = getSheetCST();
+    if (!sheet) throw new Error("Status Sheet not found");
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return response({ success: true, status: "200", data: [] });
+
+    const header = data.shift();
+    const result = data.map(row => {
+      let obj = {};
+      header.forEach((h, i) => obj[h] = row[i]);
+      return obj;
+    });
+
+    return response({
+      success: true,
+      message: "Successfully retrieved statuses",
+      status: "200",
+      data: result
     });
   } catch (err) {
     return response({ success: false, message: err.message, status: "500" });
