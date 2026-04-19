@@ -36,8 +36,11 @@ export interface CustomerContact {
   cusContact_Date: string;
   cusContact_CreationDate: string;
   conStatus_Id: string;
+  conStatus_Name?: string;
   platform_Id: string;
+  platform_Name?: string;
   employee_Id: string;
+  employee_FullName?: string;
 }
 
 export interface ContactStatus {

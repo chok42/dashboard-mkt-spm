@@ -211,18 +211,18 @@ const CustomerContacts = () => {
     }
   };
 
-  const handleExportPDF = async () => {
-    // Basic implementation using window.print as jspdf is not available/configured for advanced layouts yet
-    // In a real scenario, we'd use jspdf-autotable here.
-    Swal.fire({
-      title: "PDF Export",
-      text: "Generating PDF snapshot of current view...",
-      icon: "info",
-      timer: 1500,
-      showConfirmButton: false
-    });
-    window.print();
-  };
+  // const handleExportPDF = async () => {
+  //   // Basic implementation using window.print as jspdf is not available/configured for advanced layouts yet
+  //   // In a real scenario, we'd use jspdf-autotable here.
+  //   Swal.fire({
+  //     title: "PDF Export",
+  //     text: "Generating PDF snapshot of current view...",
+  //     icon: "info",
+  //     timer: 1500,
+  //     showConfirmButton: false
+  //   });
+  //   window.print();
+  // };
 
   const getStatusName = (id: string) => statuses.find(s => s.conStatus_Id === id)?.conStatus_Name || id;
   const getPlatformName = (id: string) => platforms.find(p => p.platform_Id === id)?.platform_Name || id;
@@ -262,10 +262,10 @@ const CustomerContacts = () => {
               <Icon icon="solar:download-square-outline" className="mr-2 h-4 w-4" />
               Export All (Excel)
             </Dropdown.Item>
-            <Dropdown.Item onClick={handleExportPDF}>
+            {/* <Dropdown.Item onClick={handleExportPDF}>
               <Icon icon="solar:file-corrupted-outline" className="mr-2 h-4 w-4" />
               Export PDF
-            </Dropdown.Item>
+            </Dropdown.Item> */}
           </Dropdown>
 
           {(role === "R99" || role === "R01") && (
@@ -295,19 +295,19 @@ const CustomerContacts = () => {
             icon={() => <Icon icon="solar:magnifer-linear" className="h-4 w-4 text-gray-500" />}
           />
           <Select name="platformId" value={filters.platformId} onChange={handleFilterChange}>
-            <option value="">All Platforms</option>
+            <option value="">ช่องทาง</option>
             {platforms.map(p => <option key={p.platform_Id} value={p.platform_Id}>{p.platform_Name}</option>)}
           </Select>
           <Select name="statusId" value={filters.statusId} onChange={handleFilterChange}>
-            <option value="">All Statuses</option>
+            <option value="">สถานะ</option>
             {statuses.map(s => <option key={s.conStatus_Id} value={s.conStatus_Id}>{s.conStatus_Name}</option>)}
           </Select>
           <Select name="serviceId" value={filters.serviceId} onChange={handleFilterChange}>
-            <option value="">All Services</option>
+            <option value="">บริการ</option>
             {hospitalServices.map(s => <option key={s.hosService_Id} value={s.hosService_Id}>{s.hosService_Name}</option>)}
           </Select>
           <div className="flex items-center gap-2">
-            <Label htmlFor="pageSize" value="Page Size:" className="hidden lg:block whitespace-nowrap" />
+            <Label htmlFor="pageSize" value="จำนวนต่อหน้า:" className="hidden lg:block whitespace-nowrap" />
             <Select name="limit" value={filters.limit} onChange={handleFilterChange} id="pageSize">
               <option value={10}>10</option>
               <option value={20}>20</option>
@@ -346,13 +346,13 @@ const CustomerContacts = () => {
                 <Table.HeadCell className="p-4">
                   <Checkbox checked={selectedIds.length === contacts.length && contacts.length > 0} onChange={toggleSelectAll} />
                 </Table.HeadCell>
-                <Table.HeadCell>Name</Table.HeadCell>
-                <Table.HeadCell>Phone</Table.HeadCell>
-                <Table.HeadCell>Status</Table.HeadCell>
-                <Table.HeadCell>Platform</Table.HeadCell>
-                <Table.HeadCell>Date</Table.HeadCell>
-                <Table.HeadCell>Added By</Table.HeadCell>
-                <Table.HeadCell>Actions</Table.HeadCell>
+                <Table.HeadCell>ชื่อ</Table.HeadCell>
+                <Table.HeadCell>เบอร์โทร</Table.HeadCell>
+                <Table.HeadCell>สถานะ</Table.HeadCell>
+                <Table.HeadCell>ช่องทาง</Table.HeadCell>
+                <Table.HeadCell>วันที่</Table.HeadCell>
+                <Table.HeadCell>ผู้เพิ่ม</Table.HeadCell>
+                <Table.HeadCell>จัดการ</Table.HeadCell>
               </Table.Head>
               <Table.Body className="divide-y">
                 {contacts.map((contact) => (

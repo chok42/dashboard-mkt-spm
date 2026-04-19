@@ -36,13 +36,13 @@ function doPost(e) {
         return getReport();
       case "GET_STATUSES":
         return getContactStatuses();
-      
+
       // Services
       case "GET_SERVICES": return getHospitalServices(payload);
       case "INSERT_SERVICE": return insertHospitalService(payload);
       case "UPDATE_SERVICE": return updateHospitalService(payload);
       case "DELETE_SERVICE": return deleteHospitalService(payload.id);
-      
+
       // Platforms
       case "GET_PLATFORMS": return getPlatforms(payload);
       case "INSERT_PLATFORM": return insertPlatform(payload);
@@ -249,8 +249,9 @@ function insertContact(payload) {
     const srvSheet = getSheetCSV();
 
     let headers = sheet.getDataRange().getValues()[0];
+    const newId = generateMaxCode();
+    const now = new Date().toISOString();
 
-    const newId = generateUUIDv4();
     const newRecord = {
       cusContact_Id: newId,
       cusContact_FirstName: payload.cusContact_FirstName || "",
@@ -260,11 +261,14 @@ function insertContact(payload) {
       cusContact_Phone: payload.cusContact_Phone || "",
       cusContact_Detail: payload.cusContact_Detail || "",
       cusContact_Note: payload.cusContact_Note || "",
-      cusContact_Date: payload.cusContact_Date || new Date().toISOString(),
-      cusContact_CreationDate: new Date().toISOString(),
+      cusContact_Date: payload.cusContact_Date || now,
+      cusContact_CreationDate: now,
       conStatus_Id: payload.conStatus_Id || "",
+      conStatus_Name: payload.conStatus_Name || "",
       platform_Id: payload.platform_Id || "",
+      platform_Name: payload.platform_Name || "",
       employee_Id: payload.employee_Id || "",
+      employee_FullName: payload.employee_FullName || "",
       cusContact_IsHidden: false
     };
 
@@ -309,10 +313,16 @@ function bulkInsertContacts(payload) {
     const serviceRows = [];
     const now = new Date().toISOString();
 
+    // Generate starting ID
+    const startId = generateMaxCode();
+    const yearPrefix = startId.substring(0, 4); // "CC69"
+    let nextNum = parseInt(startId.replace(yearPrefix, ""), 10);
+
     data.forEach(item => {
       const contact = item.contact;
       const serviceIds = item.serviceIds || [];
-      const newId = generateUUIDv4();
+      const newId = yearPrefix + String(nextNum).padStart(4, "0");
+      nextNum++;
 
       const newRecord = {
         cusContact_Id: newId,
@@ -326,8 +336,11 @@ function bulkInsertContacts(payload) {
         cusContact_Date: contact.cusContact_Date || now,
         cusContact_CreationDate: now,
         conStatus_Id: contact.conStatus_Id || "",
+        conStatus_Name: contact.conStatus_Name || "",
         platform_Id: contact.platform_Id || "",
+        platform_Name: contact.platform_Name || "",
         employee_Id: contact.employee_Id || "",
+        employee_FullName: contact.employee_FullName || "",
         cusContact_IsHidden: false
       };
 
@@ -380,13 +393,17 @@ function updateContact(payload) {
     if (rowIndex === -1) throw new Error("Contact not found");
 
     const actualRowNumber = rowIndex + 1;
+    const existingRow = data[rowIndex];
 
-    headers.forEach((h, colIndex) => {
+    let updatedRow = headers.map((h, colIndex) => {
       // Do not update Id and creation date
-      if (h !== "cusContact_Id" && h !== "cusContact_CreationDate" && payload[h] !== undefined) {
-        sheet.getRange(actualRowNumber, colIndex + 1).setValue(payload[h]);
+      if (h === "cusContact_Id" || h === "cusContact_CreationDate") {
+        return existingRow[colIndex];
       }
+      return payload[h] !== undefined ? payload[h] : existingRow[colIndex];
     });
+
+    sheet.getRange(actualRowNumber, 1, 1, headers.length).setValues([updatedRow]);
 
     // Update services
     if (payload.serviceIds !== undefined) {
@@ -409,7 +426,7 @@ function updateContact(payload) {
     }
 
     let updatedContact = {};
-    const updatedRow = sheet.getRange(actualRowNumber, 1, 1, headers.length).getValues()[0];
+    updatedRow = sheet.getRange(actualRowNumber, 1, 1, headers.length).getValues()[0];
     headers.forEach((h, i) => updatedContact[h] = updatedRow[i]);
 
     return response({
@@ -582,7 +599,7 @@ function insertHospitalService(payload) {
   try {
     const sheet = getSheetHS();
     let headers = sheet.getDataRange().getValues()[0];
-    
+
     const newId = generateUUIDv4();
     const newRecord = {
       ...payload,
@@ -590,12 +607,12 @@ function insertHospitalService(payload) {
       hosService_CreationDate: new Date().toISOString(),
       hosService_UpdateDate: new Date().toISOString()
     };
-    
+
     const rowData = headers.map(h => newRecord[h] !== undefined ? newRecord[h] : "");
     sheet.appendRow(rowData);
 
     return response({ success: true, message: "Created service successfully", status: "200", data: newRecord });
-  } catch(err) {
+  } catch (err) {
     return response({ success: false, message: err.message, status: "500" });
   }
 }
@@ -607,12 +624,12 @@ function updateHospitalService(payload) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     const idIndex = headers.indexOf("hosService_Id");
-    
+
     const rowIndex = data.findIndex((r, idx) => idx > 0 && r[idIndex] === id);
     if (rowIndex === -1) throw new Error("Service not found");
-    
+
     payload.hosService_UpdateDate = new Date().toISOString();
-    
+
     headers.forEach((h, colIndex) => {
       if (h !== "hosService_Id" && h !== "hosService_CreationDate" && payload[h] !== undefined) {
         sheet.getRange(rowIndex + 1, colIndex + 1).setValue(payload[h]);
@@ -624,7 +641,7 @@ function updateHospitalService(payload) {
     headers.forEach((h, i) => updatedService[h] = updatedRow[i]);
 
     return response({ success: true, message: "Updated successfully", status: "200", data: updatedService });
-  } catch(err) {
+  } catch (err) {
     return response({ success: false, message: err.message, status: "500" });
   }
 }
@@ -634,13 +651,13 @@ function deleteHospitalService(id) {
     const sheet = getSheetHS();
     const data = sheet.getDataRange().getValues();
     const idIndex = data[0].indexOf("hosService_Id");
-    
+
     const rowIndex = data.findIndex((r, idx) => idx > 0 && r[idIndex] === id);
     if (rowIndex !== -1) {
       sheet.deleteRow(rowIndex + 1);
     }
     return response({ success: true, message: "Deleted successfully", status: "200" });
-  } catch(err) {
+  } catch (err) {
     return response({ success: false, message: err.message, status: "500" });
   }
 }
@@ -674,18 +691,18 @@ function insertPlatform(payload) {
   try {
     const sheet = getSheetPLT();
     let headers = sheet.getDataRange().getValues()[0];
-    
+
     const newId = generateUUIDv4();
     const newRecord = {
       ...payload,
       platform_Id: newId
     };
-    
+
     const rowData = headers.map(h => newRecord[h] !== undefined ? newRecord[h] : "");
     sheet.appendRow(rowData);
 
     return response({ success: true, message: "Created platform successfully", status: "200", data: newRecord });
-  } catch(err) {
+  } catch (err) {
     return response({ success: false, message: err.message, status: "500" });
   }
 }
@@ -697,10 +714,10 @@ function updatePlatform(payload) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     const idIndex = headers.indexOf("platform_Id");
-    
+
     const rowIndex = data.findIndex((r, idx) => idx > 0 && r[idIndex] === id);
     if (rowIndex === -1) throw new Error("Platform not found");
-    
+
     headers.forEach((h, colIndex) => {
       if (h !== "platform_Id" && payload[h] !== undefined) {
         sheet.getRange(rowIndex + 1, colIndex + 1).setValue(payload[h]);
@@ -712,7 +729,7 @@ function updatePlatform(payload) {
     headers.forEach((h, i) => updatedPlatform[h] = updatedRow[i]);
 
     return response({ success: true, message: "Updated successfully", status: "200", data: updatedPlatform });
-  } catch(err) {
+  } catch (err) {
     return response({ success: false, message: err.message, status: "500" });
   }
 }
@@ -722,13 +739,13 @@ function deletePlatform(id) {
     const sheet = getSheetPLT();
     const data = sheet.getDataRange().getValues();
     const idIndex = data[0].indexOf("platform_Id");
-    
+
     const rowIndex = data.findIndex((r, idx) => idx > 0 && r[idIndex] === id);
     if (rowIndex !== -1) {
       sheet.deleteRow(rowIndex + 1);
     }
     return response({ success: true, message: "Deleted successfully", status: "200" });
-  } catch(err) {
+  } catch (err) {
     return response({ success: false, message: err.message, status: "500" });
   }
 }

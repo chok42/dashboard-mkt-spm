@@ -58,8 +58,11 @@ const ContactForm: React.FC<ContactFormProps> = ({ editId, onClose, onSave, stat
           cusContact_Note: values.cusContact_Note,
           cusContact_Date: new Date(values.cusContact_Date).toISOString(),
           conStatus_Id: values.conStatus_Id,
+          conStatus_Name: statuses.find(s => s.conStatus_Id === values.conStatus_Id)?.conStatus_Name || "",
           platform_Id: values.platform_Id,
-          employee_Id: user?.employee_Id || "SYSTEM"
+          platform_Name: platforms.find(p => p.platform_Id === values.platform_Id)?.platform_Name || "",
+          employee_Id: user?.employee_Id || "SYSTEM",
+          employee_FullName: user ? `${user.employee_FristName} ${user.employee_LastName}` : "SYSTEM"
         };
 
         if (editId) {

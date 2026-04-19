@@ -1,9 +1,9 @@
-import { 
-  CustomerContact, 
-  Department, 
-  Role, 
-  ContactStatus, 
-  Platform, 
+import {
+  CustomerContact,
+  Department,
+  Role,
+  ContactStatus,
+  Platform,
   HospitalService,
   Employee
 } from '../../types/crm.types';
@@ -81,13 +81,13 @@ const callAppScript = async (action: string, payload: any = {}, baseUrl?: string
   }
   // If the action is GET, AppScript returns pagination meta at the root layer (like result.page, result.total)
   if (action === "GET") {
-      return {
-          current_page: result.page,
-          limit: result.pageSize,
-          total_pages: result.totalPages,
-          total_count: result.total,
-          items: result.data
-      };
+    return {
+      current_page: result.page,
+      limit: result.pageSize,
+      total_pages: result.totalPages,
+      total_count: result.total,
+      items: result.data
+    };
   }
   return result.data;
 };
@@ -179,8 +179,8 @@ export const crmService = {
     } catch (e) {
       console.warn("AppScript failed, using mock data", e);
       await delay(300);
-      const newS = { 
-        ...service, 
+      const newS = {
+        ...service,
         hosService_Id: `HS${Date.now()}`,
         hosService_CreationDate: new Date().toISOString(),
         hosService_UpdateDate: new Date().toISOString(),
@@ -221,12 +221,12 @@ export const crmService = {
       console.warn("AppScript failed, using mock data", e);
       await delay(300);
       let items = [...contactsDB];
-      
+
       // Filter mock data manually
       if (filters.search) {
         const s = filters.search.toLowerCase();
-        items = items.filter(i => 
-          i.cusContact_FullName.toLowerCase().includes(s) || 
+        items = items.filter(i =>
+          i.cusContact_FullName.toLowerCase().includes(s) ||
           i.cusContact_Phone.includes(s)
         );
       }
@@ -273,8 +273,8 @@ export const crmService = {
       let items = [...contactsDB];
       if (filters.search) {
         const s = filters.search.toLowerCase();
-        items = items.filter(i => 
-          i.cusContact_FullName.toLowerCase().includes(s) || 
+        items = items.filter(i =>
+          i.cusContact_FullName.toLowerCase().includes(s) ||
           i.cusContact_Phone.includes(s)
         );
       }
@@ -317,7 +317,7 @@ export const crmService = {
         cusContact_Id: newId,
         cusContact_CreationDate: new Date().toISOString(),
       } as CustomerContact;
-      
+
       contactsDB.push(newContact);
       serviceIds.forEach(srvId => {
         contactServicesDB.push({
@@ -344,7 +344,7 @@ export const crmService = {
           cusContact_Id: newId,
           cusContact_CreationDate: new Date().toISOString(),
         } as CustomerContact;
-        
+
         contactsDB.push(newContact);
         serviceIds.forEach(srvId => {
           contactServicesDB.push({
@@ -409,29 +409,29 @@ export const crmService = {
 
   getContactReport: async (): Promise<ContactReport> => {
     try {
-       return await callAppScript("GET_REPORT");
+      return await callAppScript("GET_REPORT");
     } catch (e) {
-       console.warn("AppScript failed, using mock data", e);
-       await delay(300);
-       const report: ContactReport = {
-          total_contacts: contactsDB.length,
-          by_platform: {},
-          by_status: {},
-          by_service: {}
-       };
+      console.warn("AppScript failed, using mock data", e);
+      await delay(300);
+      const report: ContactReport = {
+        total_contacts: contactsDB.length,
+        by_platform: {},
+        by_status: {},
+        by_service: {}
+      };
 
-       contactsDB.forEach(c => {
-         const st = c.conStatus_Id || "Unknown";
-         const pl = c.platform_Id || "Unknown";
-         report.by_status[st] = (report.by_status[st] || 0) + 1;
-         report.by_platform[pl] = (report.by_platform[pl] || 0) + 1;
-       });
+      contactsDB.forEach(c => {
+        const st = c.conStatus_Id || "Unknown";
+        const pl = c.platform_Id || "Unknown";
+        report.by_status[st] = (report.by_status[st] || 0) + 1;
+        report.by_platform[pl] = (report.by_platform[pl] || 0) + 1;
+      });
 
-       contactServicesDB.forEach(cs => {
-         report.by_service[cs.hosService_Id] = (report.by_service[cs.hosService_Id] || 0) + 1;
-       });
+      contactServicesDB.forEach(cs => {
+        report.by_service[cs.hosService_Id] = (report.by_service[cs.hosService_Id] || 0) + 1;
+      });
 
-       return report;
+      return report;
     }
   },
 
@@ -445,14 +445,15 @@ export const crmService = {
       return [...employeesDB];
     }
   },
+
   createEmployee: async (employee: Omit<Employee, 'employee_Id' | 'employee_CreationDate'>): Promise<Employee> => {
     try {
       return await callEmployeeAppScript("INSERT_EMPLOYEE", employee);
     } catch (e) {
       console.warn("AppScript failed, using mock data", e);
       await delay(300);
-      const newE = { 
-        ...employee, 
+      const newE = {
+        ...employee,
         employee_Id: `E${Date.now()}`,
         employee_CreationDate: new Date().toISOString()
       } as Employee;
