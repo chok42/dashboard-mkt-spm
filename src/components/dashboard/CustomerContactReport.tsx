@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, Spinner } from "flowbite-react";
 import { Icon } from "@iconify/react";
 import { crmService, ContactReport } from "../../services/api/crmService";

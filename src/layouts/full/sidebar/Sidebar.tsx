@@ -4,7 +4,6 @@ import NavItems from "./NavItems";
 import SimpleBar from "simplebar-react";
 import React from "react";
 import FullLogo from "../shared/logo/FullLogo";
-// import Upgrade from "./Upgrade";
 import NavCollapse from "./NavCollapse";
 import { useAuth } from "../../../contexts/AuthContext";
 
@@ -51,7 +50,6 @@ const SidebarLayout = () => {
               </Sidebar.ItemGroup>
             </Sidebar.Items>
           </SimpleBar>
-          {/* <Upgrade/> */}
         </Sidebar>
       </div>
     </>
