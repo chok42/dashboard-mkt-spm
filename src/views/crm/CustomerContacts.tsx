@@ -128,7 +128,7 @@ const CustomerContacts = () => {
 
   const getSortIcon = (column: 'date' | 'name') => {
     if (filters.sortBy !== column) return <Icon icon="solar:sort-vertical-line-duotone" className="ml-1 opacity-20 h-4 w-4" />;
-    return filters.sortOrder === 'asc' 
+    return filters.sortOrder === 'asc'
       ? <Icon icon="solar:sort-from-bottom-to-top-line-duotone" className="ml-1 text-primary h-4 w-4" />
       : <Icon icon="solar:sort-from-top-to-bottom-line-duotone" className="ml-1 text-primary h-4 w-4" />;
   };
@@ -338,7 +338,7 @@ const CustomerContacts = () => {
       </div>
 
       {/* TopBar Filters */}
-      <div className="w-full flex flex-col gap-2 mb-6 p-4">
+      <div className="w-full flex flex-col gap-2 p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <TextInput
             name="search"
@@ -360,17 +360,7 @@ const CustomerContacts = () => {
             <option value="">บริการ</option>
             {hospitalServices.map(s => <option key={s.hosService_Id} value={s.hosService_Id}>{s.hosService_Name}</option>)}
           </Select>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="pageSize" value="จำนวนต่อหน้า:" className="hidden lg:block whitespace-nowrap" />
-            <Select name="limit" value={filters.limit} onChange={handleFilterChange} id="pageSize">
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={30}>30</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={9999}>ทั้งหมด</option>
-            </Select>
-          </div>
+
         </div>
         <div className="flex gap-2">
           <TextInput
@@ -388,17 +378,28 @@ const CustomerContacts = () => {
             title="End Date"
           />
         </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="pageSize" value="จำนวนต่อหน้า:" className="hidden lg:block whitespace-nowrap" />
+          <Select name="limit" value={filters.limit} onChange={handleFilterChange} id="pageSize">
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={30}>30</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={9999}>ทั้งหมด</option>
+          </Select>
+        </div>
       </div>
 
       {viewMode === 'dashboard' ? (
         loadingAll ? (
           <div className="flex justify-center p-10"><Spinner size="xl" /></div>
         ) : (
-          <CustomerAnalytics 
-            contacts={allContacts} 
-            platforms={platforms} 
-            statuses={statuses} 
-            services={hospitalServices} 
+          <CustomerAnalytics
+            contacts={allContacts}
+            platforms={platforms}
+            statuses={statuses}
+            services={hospitalServices}
             report={report}
           />
         )

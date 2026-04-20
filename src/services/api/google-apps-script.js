@@ -183,8 +183,24 @@ function getCustomerContacts(filters) {
         }
       }
 
-      // Sort Descending by Date
-      result.sort((a, b) => new Date(b.cusContact_CreationDate) - new Date(a.cusContact_CreationDate));
+      // Dynamic Sorting
+      const sortBy = filters.sortBy || 'date';
+      const sortOrder = filters.sortOrder || 'desc';
+
+      result.sort((a, b) => {
+        let valA, valB;
+        if (sortBy === 'name') {
+          valA = (a.cusContact_FullName || "").toString().toLowerCase();
+          valB = (b.cusContact_FullName || "").toString().toLowerCase();
+        } else {
+          valA = a.cusContact_Date ? new Date(a.cusContact_Date).getTime() : 0;
+          valB = b.cusContact_Date ? new Date(b.cusContact_Date).getTime() : 0;
+        }
+
+        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
 
       const total = result.length;
       const totalPages = Math.ceil(total / pageSize);

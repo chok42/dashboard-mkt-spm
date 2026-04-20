@@ -1,4 +1,4 @@
-import { Button, Checkbox, Label, TextInput } from "flowbite-react";
+import { Button, Label, TextInput } from "flowbite-react";
 import { useNavigate } from "react-router";
 import { useState } from "react";
 import { authService } from "../../../services/api/authService";
@@ -7,7 +7,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 const AuthLogin = () => {
   const navigate = useNavigate();
   const { loginContext } = useAuth();
-  
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,7 @@ const AuthLogin = () => {
     event.preventDefault();
     setError(null);
     setLoading(true);
-    
+
     try {
       const user = await authService.login(username, password);
       loginContext(user);
@@ -61,20 +61,9 @@ const AuthLogin = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
-        <div className="flex justify-between my-5">
-          <div className="flex items-center gap-2">
-            <Checkbox id="accept" className="checkbox" defaultChecked />
-            <Label
-              htmlFor="accept"
-              className="opacity-90 font-normal cursor-pointer"
-            >
-              Remember this Device
-            </Label>
-          </div>
-        </div>
-        <Button 
-          type="submit" 
-          color={"primary"}  
+        <Button
+          type="submit"
+          color={"primary"}
           className="w-full bg-primary text-white rounded-xl"
           disabled={loading}
         >
