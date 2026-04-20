@@ -40,6 +40,16 @@ export const toThaiDateString = (date: Date | string | number) => {
   })
   return datetoThai
 };
+
+export const toThaiDateNumericString = (date: Date | string | number) => {
+  if (!date) return "-";
+  const dataDate = new Date(date);
+  return dataDate.toLocaleDateString('th-TH', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+};
 //------------------------------------
 //GoogleDrive
 //------------------------------------

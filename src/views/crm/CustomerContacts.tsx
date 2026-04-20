@@ -1,4 +1,4 @@
-import { Button, Table, Badge, Card, Spinner, Modal, TextInput, Select, Pagination, Dropdown, Checkbox, Label, ButtonGroup } from "flowbite-react";
+import { Button, Table, Badge, Card, Spinner, Modal, TextInput, Select, Pagination, Dropdown, Checkbox, Label, ButtonGroup, Datepicker } from "flowbite-react";
 import { Icon } from "@iconify/react";
 import * as XLSX from "xlsx";
 import Swal from "sweetalert2";
@@ -9,7 +9,7 @@ import ContactForm from "./components/ContactForm";
 import ContactImportModal from "./components/ContactImportModal";
 import CustomerAnalytics from "./components/CustomerAnalytics";
 import { useAuth } from "../../contexts/AuthContext";
-import { toThaiDateString } from "src/helpers/format";
+import { toThaiDateNumericString } from "src/helpers/format";
 import { useCallback, useEffect, useState } from "react";
 
 const CustomerContacts = () => {
@@ -107,6 +107,11 @@ const CustomerContacts = () => {
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
+  };
+
+  const handleDateChange = (name: string, date: Date | null) => {
+    const value = date ? date.toISOString().split('T')[0] : "";
     setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
   };
 
@@ -236,7 +241,7 @@ const CustomerContacts = () => {
         "Phone": c.cusContact_Phone,
         "Status": c.conStatus_Name,
         "Platform": c.platform_Name,
-        "Date": toThaiDateString(c.cusContact_Date),
+        "Date": toThaiDateNumericString(c.cusContact_Date),
         "Added By": c.employee_FullName,
         "Detail": c.cusContact_Detail,
         "Note": c.cusContact_Note || ""
@@ -362,21 +367,25 @@ const CustomerContacts = () => {
           </Select>
 
         </div>
-        <div className="flex gap-2">
-          <TextInput
-            name="startDate"
-            type="date"
-            value={filters.startDate}
-            onChange={handleFilterChange}
-            title="Start Date"
-          />
-          <TextInput
-            name="endDate"
-            type="date"
-            value={filters.endDate}
-            onChange={handleFilterChange}
-            title="End Date"
-          />
+        <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex-1">
+            <Datepicker 
+              language="th-TH"
+              labelTodayButton="วันนี้"
+              labelClearButton="ล้าง"
+              onChange={(date) => handleDateChange('startDate', date)}
+              value={filters.startDate ? new Date(filters.startDate) : undefined}
+            />
+          </div>
+          <div className="flex-1">
+            <Datepicker 
+              language="th-TH"
+              labelTodayButton="วันนี้"
+              labelClearButton="ล้าง"
+              onChange={(date) => handleDateChange('endDate', date)}
+              value={filters.endDate ? new Date(filters.endDate) : undefined}
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Label htmlFor="pageSize" value="จำนวนต่อหน้า:" className="hidden lg:block whitespace-nowrap" />
@@ -444,7 +453,7 @@ const CustomerContacts = () => {
                         <Badge color="info" className="inline-flex">{contact.conStatus_Name}</Badge>
                       </Table.Cell>
                       <Table.Cell>{contact.platform_Name}</Table.Cell>
-                      <Table.Cell>{toThaiDateString(contact.cusContact_Date)}</Table.Cell>
+                      <Table.Cell>{toThaiDateNumericString(contact.cusContact_Date)}</Table.Cell>
                       <Table.Cell>{contact.employee_FullName}</Table.Cell>
                       <Table.Cell>
                         <Dropdown label={<Icon icon="solar:menu-dots-bold" />} inline arrowIcon={false}>
@@ -503,7 +512,7 @@ const CustomerContacts = () => {
             <div className="space-y-4">
               <p><strong>Name:</strong> {viewContact.cusContact_FullName}</p>
               <p><strong>Phone:</strong> {viewContact.cusContact_Phone}</p>
-              <p><strong>Date:</strong> {toThaiDateString(viewContact.cusContact_Date)}</p>
+              <p><strong>Date:</strong> {toThaiDateNumericString(viewContact.cusContact_Date)}</p>
               <p><strong>Status:</strong> {viewContact.conStatus_Name}</p>
               <p><strong>Platform:</strong> {viewContact.platform_Name}</p>
               <p><strong>Details:</strong> {viewContact.cusContact_Detail}</p>

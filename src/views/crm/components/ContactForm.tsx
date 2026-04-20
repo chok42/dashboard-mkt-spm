@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Label, TextInput, Textarea, Select, Spinner } from "flowbite-react";
+import { Button, Label, TextInput, Textarea, Select, Spinner, Datepicker } from "flowbite-react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import toast from "react-hot-toast";
@@ -159,9 +159,15 @@ const ContactForm: React.FC<ContactFormProps> = ({ editId, onClose, onSave, stat
           </div>
           <div>
             <div className="mb-2 block"><Label htmlFor="cusContact_Date" value="Contact Date *" /></div>
-            <TextInput type="date" id="cusContact_Date" {...formik.getFieldProps("cusContact_Date")} />
+            <Datepicker 
+              language="th-TH"
+              labelTodayButton="วันนี้"
+              labelClearButton="ล้าง"
+              onChange={(date: Date | null) => formik.setFieldValue("cusContact_Date", date ? date.toISOString().split('T')[0] : "")}
+              value={new Date(formik.values.cusContact_Date)}
+            />
             {formik.touched.cusContact_Date && formik.errors.cusContact_Date ? (
-              <div className="text-red-500 text-sm">{formik.errors.cusContact_Date}</div>
+              <div className="text-red-500 text-sm">{formik.errors.cusContact_Date as string}</div>
             ) : null}
           </div>
         </div>
