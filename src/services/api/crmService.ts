@@ -239,7 +239,7 @@ export const crmService = {
         const eDate = new Date(filters.endDate).getTime() + 86400000;
         items = items.filter(i => {
           const d = new Date(i.cusContact_Date).getTime();
-          return d >= sDate && d <= eDate;
+          return d >= sDate && d < eDate;
         });
       }
       if (filters.serviceId) {
@@ -304,7 +304,7 @@ export const crmService = {
         const eDate = new Date(filters.endDate).getTime() + 86400000;
         items = items.filter(i => {
           const d = new Date(i.cusContact_Date).getTime();
-          return d >= sDate && d <= eDate;
+          return d >= sDate && d < eDate;
         });
       }
       // Handle Sorting for getAll

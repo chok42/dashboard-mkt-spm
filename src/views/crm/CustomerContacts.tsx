@@ -111,7 +111,8 @@ const CustomerContacts = () => {
   };
 
   const handleDateChange = (name: string, date: Date | null) => {
-    const value = date ? date.toISOString().split('T')[0] : "";
+    // Use local date string (en-CA returns YYYY-MM-DD) to avoid UTC shift bug
+    const value = date ? date.toLocaleDateString('en-CA') : "";
     setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
   };
 

@@ -167,7 +167,7 @@ function getCustomerContacts(filters) {
         const eDate = new Date(filters.endDate).getTime() + 86400000;
         result = result.filter(i => {
           const d = new Date(i.cusContact_Date).getTime();
-          return d >= sDate && d <= eDate;
+          return d >= sDate && d < eDate;
         });
       }
       if (filters.serviceId) {

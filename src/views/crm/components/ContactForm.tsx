@@ -163,7 +163,7 @@ const ContactForm: React.FC<ContactFormProps> = ({ editId, onClose, onSave, stat
               language="th-TH"
               labelTodayButton="วันนี้"
               labelClearButton="ล้าง"
-              onChange={(date: Date | null) => formik.setFieldValue("cusContact_Date", date ? date.toISOString().split('T')[0] : "")}
+              onChange={(date: Date | null) => formik.setFieldValue("cusContact_Date", date ? date.toLocaleDateString('en-CA') : "")}
               value={new Date(formik.values.cusContact_Date)}
             />
             {formik.touched.cusContact_Date && formik.errors.cusContact_Date ? (
