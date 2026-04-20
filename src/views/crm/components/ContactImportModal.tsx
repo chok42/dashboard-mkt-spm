@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { ContactStatus, Platform, HospitalService, CustomerContact } from "../../../types/crm.types";
 import { useAuth } from "../../../contexts/AuthContext";
 import { crmService } from "../../../services/api/crmService";
+import { format } from 'date-fns'
 
 interface ContactImportModalProps {
   show: boolean;
@@ -66,8 +67,8 @@ const ContactImportModal: React.FC<ContactImportModalProps> = ({
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json<ImportRow>(worksheet);
-
         validateData(jsonData);
+
       } catch (err) {
         console.error("Error parsing Excel:", err);
         setError("Failed to parse Excel file. Please ensure it is a valid .xlsx or .csv file.");
@@ -127,15 +128,22 @@ const ContactImportModal: React.FC<ContactImportModalProps> = ({
       });
 
       // Date parsing
-      let contactDate = new Date().toISOString().split("T")[0];
+      // let contactDate = new Date().toISOString().split("T")[0];
+      // if (row["Date"]) {
+      //   const d = new Date(row["Date"]);
+      //   if (!isNaN(d.getTime())) {
+      //     contactDate = d.toISOString().split("T")[0];
+      //   } else {
+      //     errors.push(`Invalid Date: ${row["Date"]}`);
+      //   }
+      // }
+      // console.log('row["Date"]', row["Date"]);
+
+      let contactDate = "";
       if (row["Date"]) {
-        const d = new Date(row["Date"]);
-        if (!isNaN(d.getTime())) {
-          contactDate = d.toISOString().split("T")[0];
-        } else {
-          errors.push(`Invalid Date: ${row["Date"]}`);
-        }
+        contactDate = format(new Date(row["Date"]), 'dd/MM/yyyy');
       }
+      console.log('contactDate', contactDate);
 
       return {
         contact: {
@@ -146,7 +154,7 @@ const ContactImportModal: React.FC<ContactImportModalProps> = ({
           cusContact_Phone: phone,
           cusContact_Detail: row["Details"]?.toString() || "",
           cusContact_Note: row["Notes"]?.toString() || "",
-          cusContact_Date: contactDate,
+          cusContact_Date: contactDate || "",
           conStatus_Id: status?.conStatus_Id || statuses[0]?.conStatus_Id || "Unknown",
           conStatus_Name: status?.conStatus_Name || statuses[0]?.conStatus_Name || "Unknown",
           platform_Id: platform?.platform_Id || platforms[0]?.platform_Id || "Unknown",

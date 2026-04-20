@@ -1,12 +1,13 @@
-import { Button, Table, Badge, Card, Spinner, Modal, TextInput, Select, Pagination, Dropdown, Checkbox, Label } from "flowbite-react";
+import { Button, Table, Badge, Card, Spinner, Modal, TextInput, Select, Pagination, Dropdown, Checkbox, Label, ButtonGroup } from "flowbite-react";
 import { Icon } from "@iconify/react";
 import * as XLSX from "xlsx";
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
-import { crmService, ContactFilters } from "../../services/api/crmService";
-import { CustomerContact, ContactStatus, Platform, HospitalService, Employee } from "../../types/crm.types";
+import { crmService, ContactFilters, ContactReport } from "../../services/api/crmService";
+import { CustomerContact, ContactStatus, Platform, HospitalService } from "../../types/crm.types";
 import ContactForm from "./components/ContactForm";
 import ContactImportModal from "./components/ContactImportModal";
+import CustomerAnalytics from "./components/CustomerAnalytics";
 import { useAuth } from "../../contexts/AuthContext";
 import { toThaiDateString } from "src/helpers/format";
 import { useCallback, useEffect, useState } from "react";
@@ -23,9 +24,12 @@ const CustomerContacts = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [viewContact, setViewContact] = useState<CustomerContact | null>(null);
   const [viewServices, setViewServices] = useState<string[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
+  const [allContacts, setAllContacts] = useState<CustomerContact[]>([]);
+  const [loadingAll, setLoadingAll] = useState(false);
+  const [report, setReport] = useState<ContactReport | null>(null);
 
   // Filtering & Pagination State
   const [filters, setFilters] = useState<ContactFilters>({
@@ -44,16 +48,14 @@ const CustomerContacts = () => {
 
   const loadReferenceData = async () => {
     try {
-      const [fetchedStatuses, fetchedPlatforms, fetchedServices, fetchedEmployees] = await Promise.all([
+      const [fetchedStatuses, fetchedPlatforms, fetchedServices] = await Promise.all([
         crmService.getStatuses(),
         crmService.getPlatforms(),
-        crmService.getHospitalServices(),
-        crmService.getEmployees()
+        crmService.getHospitalServices()
       ]);
       setStatuses(fetchedStatuses);
       setPlatforms(fetchedPlatforms);
       setHospitalServices(fetchedServices);
-      setEmployees(fetchedEmployees);
     } catch (error) {
       console.error("Failed to load reference CRM data", error);
     }
@@ -82,6 +84,27 @@ const CustomerContacts = () => {
     loadContacts();
   }, [loadContacts]);
 
+  useEffect(() => {
+    if (viewMode === 'dashboard') {
+      const fetchAll = async () => {
+        setLoadingAll(true);
+        try {
+          const [data, reportData] = await Promise.all([
+            crmService.getAllContacts(filters),
+            crmService.getContactReport()
+          ]);
+          setAllContacts(data);
+          setReport(reportData);
+        } catch (error) {
+          console.error("Failed to load data for dashboard", error);
+        } finally {
+          setLoadingAll(false);
+        }
+      };
+      fetchAll();
+    }
+  }, [viewMode, filters.startDate, filters.endDate, filters.platformId, filters.statusId, filters.serviceId]);
+
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
@@ -89,6 +112,25 @@ const CustomerContacts = () => {
 
   const onPageChange = (page: number) => {
     setFilters(prev => ({ ...prev, page }));
+  };
+
+  const handleSort = (column: 'date' | 'name') => {
+    setFilters(prev => {
+      const isAsc = prev.sortBy === column && prev.sortOrder === 'asc';
+      return {
+        ...prev,
+        sortBy: column,
+        sortOrder: isAsc ? 'desc' : 'asc',
+        page: 1
+      };
+    });
+  };
+
+  const getSortIcon = (column: 'date' | 'name') => {
+    if (filters.sortBy !== column) return <Icon icon="solar:sort-vertical-line-duotone" className="ml-1 opacity-20 h-4 w-4" />;
+    return filters.sortOrder === 'asc' 
+      ? <Icon icon="solar:sort-from-bottom-to-top-line-duotone" className="ml-1 text-primary h-4 w-4" />
+      : <Icon icon="solar:sort-from-top-to-bottom-line-duotone" className="ml-1 text-primary h-4 w-4" />;
   };
 
   const toggleSelectAll = () => {
@@ -192,10 +234,10 @@ const CustomerContacts = () => {
         "ID": c.cusContact_Id,
         "Full Name": c.cusContact_FullName,
         "Phone": c.cusContact_Phone,
-        "Status": getStatusName(c.conStatus_Id),
-        "Platform": getPlatformName(c.platform_Id),
+        "Status": c.conStatus_Name,
+        "Platform": c.platform_Name,
         "Date": toThaiDateString(c.cusContact_Date),
-        "Added By": getEmployeeName(c.employee_Id),
+        "Added By": c.employee_FullName,
         "Detail": c.cusContact_Detail,
         "Note": c.cusContact_Note || ""
       }));
@@ -224,12 +266,12 @@ const CustomerContacts = () => {
   //   window.print();
   // };
 
-  const getStatusName = (id: string) => statuses.find(s => s.conStatus_Id === id)?.conStatus_Name || id;
-  const getPlatformName = (id: string) => platforms.find(p => p.platform_Id === id)?.platform_Name || id;
-  const getEmployeeName = (id: string) => {
-    const emp = employees.find(e => e.employee_Id === id);
-    return emp ? `${emp.employee_FristName} ${emp.employee_LastName}` : id;
-  };
+  // const getStatusName = (id: string) => statuses.find(s => s.conStatus_Id === id)?.conStatus_Name || id;
+  // const getPlatformName = (id: string) => platforms.find(p => p.platform_Id === id)?.platform_Name || id;
+  // const getEmployeeName = (id: string) => {
+  //   const emp = employees.find(e => e.employee_Id === id);
+  //   return emp ? `${emp.employee_FristName} ${emp.employee_LastName}` : id;
+  // };
 
   if (isFormOpen) {
     return (
@@ -249,11 +291,23 @@ const CustomerContacts = () => {
   return (
     <Card className="shadow-md">
       <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-        <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+        <h5 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+          <Icon icon="solar:users-group-rounded-bold-duotone" className="text-primary w-6 h-6" />
           Customer Contacts
         </h5>
         <div className="flex gap-2 flex-wrap justify-end">
-          <Dropdown label="Export" color="success" className="bg-green-600 hover:bg-green-700 text-white">
+          <ButtonGroup className="mr-2">
+            <Button size="sm" color={viewMode === 'list' ? 'info' : 'gray'} onClick={() => setViewMode('list')}>
+              <Icon icon="solar:list-bold" className="mr-2 h-4 w-4" />
+              List
+            </Button>
+            <Button size="sm" color={viewMode === 'dashboard' ? 'info' : 'gray'} onClick={() => setViewMode('dashboard')}>
+              <Icon icon="solar:chart-square-bold" className="mr-2 h-4 w-4" />
+              Dashboard
+            </Button>
+          </ButtonGroup>
+
+          <Dropdown label="Export" color="success" className="bg-green-600 hover:bg-green-700 text-white" size="sm">
             <Dropdown.Item onClick={() => handleExportExcel(false)}>
               <Icon icon="solar:file-download-outline" className="mr-2 h-4 w-4" />
               Export Selected (Excel)
@@ -336,86 +390,108 @@ const CustomerContacts = () => {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center p-10"><Spinner size="xl" /></div>
+      {viewMode === 'dashboard' ? (
+        loadingAll ? (
+          <div className="flex justify-center p-10"><Spinner size="xl" /></div>
+        ) : (
+          <CustomerAnalytics 
+            contacts={allContacts} 
+            platforms={platforms} 
+            statuses={statuses} 
+            services={hospitalServices} 
+            report={report}
+          />
+        )
       ) : (
-        <>
-          <div className="overflow-x-auto">
-            <Table hoverable>
-              <Table.Head>
-                <Table.HeadCell className="p-4">
-                  <Checkbox checked={selectedIds.length === contacts.length && contacts.length > 0} onChange={toggleSelectAll} />
-                </Table.HeadCell>
-                <Table.HeadCell>ชื่อ</Table.HeadCell>
-                <Table.HeadCell>เบอร์โทร</Table.HeadCell>
-                <Table.HeadCell>สถานะ</Table.HeadCell>
-                <Table.HeadCell>ช่องทาง</Table.HeadCell>
-                <Table.HeadCell>วันที่</Table.HeadCell>
-                <Table.HeadCell>ผู้เพิ่ม</Table.HeadCell>
-                <Table.HeadCell>จัดการ</Table.HeadCell>
-              </Table.Head>
-              <Table.Body className="divide-y">
-                {contacts.map((contact) => (
-                  <Table.Row key={contact.cusContact_Id} className="bg-white dark:border-gray-700 dark:bg-gray-800">
-                    <Table.Cell className="p-4">
-                      <Checkbox checked={selectedIds.includes(contact.cusContact_Id)} onChange={() => toggleSelect(contact.cusContact_Id)} />
-                    </Table.Cell>
-                    <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white">
-                      {contact.cusContact_FullName}
-                    </Table.Cell>
-                    <Table.Cell>{contact.cusContact_Phone}</Table.Cell>
-                    <Table.Cell>
-                      <Badge color="info" className="inline-flex">{getStatusName(contact.conStatus_Id)}</Badge>
-                    </Table.Cell>
-                    <Table.Cell>{getPlatformName(contact.platform_Id)}</Table.Cell>
-                    <Table.Cell>{toThaiDateString(contact.cusContact_Date)}</Table.Cell>
-                    <Table.Cell>{getEmployeeName(contact.employee_Id)}</Table.Cell>
-                    <Table.Cell>
-                      <Dropdown label={<Icon icon="solar:menu-dots-bold" />} inline arrowIcon={false}>
-                        <Dropdown.Item onClick={() => handleView(contact.cusContact_Id)}>
-                          <Icon icon="solar:eye-outline" className="mr-2 h-4 w-4 text-blue-500" />
-                          View Details
-                        </Dropdown.Item>
-                        {(role === "R99" || (role === "R01" && contact.employee_Id === user?.employee_Id)) && (
-                          <>
-                            <Dropdown.Item onClick={() => handleEdit(contact.cusContact_Id)}>
-                              <Icon icon="solar:pen-new-square-outline" className="mr-2 h-4 w-4 text-gray-500" />
-                              Edit
-                            </Dropdown.Item>
-                            <Dropdown.Item onClick={() => handleHide(contact.cusContact_Id)}>
-                              <Icon icon="solar:mask-bold-outline" className="mr-2 h-4 w-4 text-yellow-500" />
-                              Hide
-                            </Dropdown.Item>
-                            <Dropdown.Divider />
-                            <Dropdown.Item onClick={() => handleDelete(contact.cusContact_Id)} className="text-red-600">
-                              <Icon icon="solar:trash-bin-trash-outline" className="mr-2 h-4 w-4" />
-                              Delete
-                            </Dropdown.Item>
-                          </>
-                        )}
-                      </Dropdown>
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-                {contacts.length === 0 && (
-                  <Table.Row>
-                    <Table.Cell colSpan={6} className="text-center py-4 text-gray-500">No contacts found matching criteria</Table.Cell>
-                  </Table.Row>
-                )}
-              </Table.Body>
-            </Table>
-          </div>
+        loading ? (
+          <div className="flex justify-center p-10"><Spinner size="xl" /></div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table hoverable>
+                <Table.Head>
+                  <Table.HeadCell className="p-4">
+                    <Checkbox checked={selectedIds.length === contacts.length && contacts.length > 0} onChange={toggleSelectAll} />
+                  </Table.HeadCell>
+                  <Table.HeadCell className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" onClick={() => handleSort('name')}>
+                    <div className="flex items-center">
+                      ชื่อ {getSortIcon('name')}
+                    </div>
+                  </Table.HeadCell>
+                  <Table.HeadCell>เบอร์โทร</Table.HeadCell>
+                  <Table.HeadCell>สถานะ</Table.HeadCell>
+                  <Table.HeadCell>ช่องทาง</Table.HeadCell>
+                  <Table.HeadCell className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" onClick={() => handleSort('date')}>
+                    <div className="flex items-center">
+                      วันที่ {getSortIcon('date')}
+                    </div>
+                  </Table.HeadCell>
+                  <Table.HeadCell>ผู้เพิ่ม</Table.HeadCell>
+                  <Table.HeadCell>จัดการ</Table.HeadCell>
+                </Table.Head>
+                <Table.Body className="divide-y">
+                  {contacts.map((contact) => (
+                    <Table.Row key={contact.cusContact_Id} className="bg-white dark:border-gray-700 dark:bg-gray-800">
+                      <Table.Cell className="p-4">
+                        <Checkbox checked={selectedIds.includes(contact.cusContact_Id)} onChange={() => toggleSelect(contact.cusContact_Id)} />
+                      </Table.Cell>
+                      <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white">
+                        {contact.cusContact_FullName}
+                      </Table.Cell>
+                      <Table.Cell>{contact.cusContact_Phone}</Table.Cell>
+                      <Table.Cell>
+                        <Badge color="info" className="inline-flex">{contact.conStatus_Name}</Badge>
+                      </Table.Cell>
+                      <Table.Cell>{contact.platform_Name}</Table.Cell>
+                      <Table.Cell>{toThaiDateString(contact.cusContact_Date)}</Table.Cell>
+                      <Table.Cell>{contact.employee_FullName}</Table.Cell>
+                      <Table.Cell>
+                        <Dropdown label={<Icon icon="solar:menu-dots-bold" />} inline arrowIcon={false}>
+                          <Dropdown.Item onClick={() => handleView(contact.cusContact_Id)}>
+                            <Icon icon="solar:eye-outline" className="mr-2 h-4 w-4 text-blue-500" />
+                            View Details
+                          </Dropdown.Item>
+                          {(role === "R99" || (role === "R01" && contact.employee_Id === user?.employee_Id)) && (
+                            <>
+                              <Dropdown.Item onClick={() => handleEdit(contact.cusContact_Id)}>
+                                <Icon icon="solar:pen-new-square-outline" className="mr-2 h-4 w-4 text-gray-500" />
+                                Edit
+                              </Dropdown.Item>
+                              <Dropdown.Item onClick={() => handleHide(contact.cusContact_Id)}>
+                                <Icon icon="garden:eye-hide-fill-16" className="mr-2 h-4 w-4 text-yellow-500" />
+                                Hide
+                              </Dropdown.Item>
+                              <Dropdown.Divider />
+                              <Dropdown.Item onClick={() => handleDelete(contact.cusContact_Id)} className="text-red-600">
+                                <Icon icon="solar:trash-bin-trash-outline" className="mr-2 h-4 w-4" />
+                                Delete
+                              </Dropdown.Item>
+                            </>
+                          )}
+                        </Dropdown>
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                  {contacts.length === 0 && (
+                    <Table.Row>
+                      <Table.Cell colSpan={6} className="text-center py-4 text-gray-500">No contacts found matching criteria</Table.Cell>
+                    </Table.Row>
+                  )}
+                </Table.Body>
+              </Table>
+            </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-gray-500">Showing {contacts.length} of {totalCount} entries</p>
-            <Pagination
-              currentPage={filters.page || 1}
-              totalPages={totalPages}
-              onPageChange={onPageChange}
-              showIcons
-            />
-          </div>
-        </>
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-gray-500">Showing {contacts.length} of {totalCount} entries</p>
+              <Pagination
+                currentPage={filters.page || 1}
+                totalPages={totalPages}
+                onPageChange={onPageChange}
+                showIcons
+              />
+            </div>
+          </>
+        )
       )}
 
       {/* View Contact Modal */}
@@ -427,8 +503,8 @@ const CustomerContacts = () => {
               <p><strong>Name:</strong> {viewContact.cusContact_FullName}</p>
               <p><strong>Phone:</strong> {viewContact.cusContact_Phone}</p>
               <p><strong>Date:</strong> {toThaiDateString(viewContact.cusContact_Date)}</p>
-              <p><strong>Status:</strong> {getStatusName(viewContact.conStatus_Id)}</p>
-              <p><strong>Platform:</strong> {getPlatformName(viewContact.platform_Id)}</p>
+              <p><strong>Status:</strong> {viewContact.conStatus_Name}</p>
+              <p><strong>Platform:</strong> {viewContact.platform_Name}</p>
               <p><strong>Details:</strong> {viewContact.cusContact_Detail}</p>
               {viewContact.cusContact_Note && <p><strong>Note:</strong> {viewContact.cusContact_Note}</p>}
 
@@ -442,7 +518,7 @@ const CustomerContacts = () => {
                   {viewServices.length === 0 && <span className="text-gray-500">No specific services</span>}
                 </div>
               </div>
-              <p className="text-sm text-gray-400 mt-4 border-t pt-2">Added by: {getEmployeeName(viewContact.employee_Id)}</p>
+              <p className="text-sm text-gray-400 mt-4 border-t pt-2">Added by: {viewContact.employee_FullName}</p>
             </div>
           )}
         </Modal.Body>

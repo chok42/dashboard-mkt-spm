@@ -36,6 +36,8 @@ export interface ContactFilters {
   endDate?: string;
   page?: number;
   limit?: number;
+  sortBy?: 'date' | 'name';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface PaginatedContacts {
@@ -244,8 +246,25 @@ export const crmService = {
         const contactIds = contactServicesDB.filter(cs => cs.hosService_Id === filters.serviceId).map(cs => cs.cusContact_Id);
         items = items.filter(i => contactIds.includes(i.cusContact_Id));
       }
+      
+      // Handle Sorting
+      const sortBy = filters.sortBy || 'date';
+      const sortOrder = filters.sortOrder || 'desc';
 
-      items.sort((a, b) => new Date(b.cusContact_CreationDate).getTime() - new Date(a.cusContact_CreationDate).getTime());
+      items.sort((a, b) => {
+        let valA: any, valB: any;
+        if (sortBy === 'name') {
+          valA = a.cusContact_FullName.toLowerCase();
+          valB = b.cusContact_FullName.toLowerCase();
+        } else {
+          valA = new Date(a.cusContact_Date).getTime();
+          valB = b.cusContact_Date ? new Date(b.cusContact_Date).getTime() : 0;
+        }
+
+        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
 
       const page = filters.page || 1;
       const limit = filters.limit || 10;
@@ -288,7 +307,25 @@ export const crmService = {
           return d >= sDate && d <= eDate;
         });
       }
-      return items.sort((a, b) => new Date(b.cusContact_CreationDate).getTime() - new Date(a.cusContact_CreationDate).getTime());
+      // Handle Sorting for getAll
+      const sortBy = filters.sortBy || 'date';
+      const sortOrder = filters.sortOrder || 'desc';
+
+      items.sort((a, b) => {
+        let valA: any, valB: any;
+        if (sortBy === 'name') {
+          valA = a.cusContact_FullName.toLowerCase();
+          valB = b.cusContact_FullName.toLowerCase();
+        } else {
+          valA = new Date(a.cusContact_Date).getTime();
+          valB = b.cusContact_Date ? new Date(b.cusContact_Date).getTime() : 0;
+        }
+        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      return items;
     }
   },
 

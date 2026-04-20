@@ -20,10 +20,10 @@ export const mockDepartments: Department[] = [];
 export const mockEmployees: Employee[] = [];
 
 export const mockContactStatuses: ContactStatus[] = [
-  { conStatus_Id: 'S01', conStatus_Name: 'การสนทนา (Conversation)' },
-  { conStatus_Id: 'S02', conStatus_Name: 'นัดหมาย (Appointment)' },
-  { conStatus_Id: 'S03', conStatus_Name: 'ตรวจแล้ว (Examined)' },
-  { conStatus_Id: 'S04', conStatus_Name: 'ยกเลิกนัด (Cancelled)' }
+  // { conStatus_Id: 'S01', conStatus_Name: 'การสนทนา (Conversation)' },
+  // { conStatus_Id: 'S02', conStatus_Name: 'นัดหมาย (Appointment)' },
+  // { conStatus_Id: 'S03', conStatus_Name: 'ตรวจแล้ว (Examined)' },
+  // { conStatus_Id: 'S04', conStatus_Name: 'ยกเลิกนัด (Cancelled)' }
 ];
 
 export const mockPlatforms: Platform[] = [];
